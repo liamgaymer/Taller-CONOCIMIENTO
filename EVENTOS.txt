@@ -1,0 +1,223 @@
+1. EVT_VerificarStockMateriales: 
+
+USE fashiondb;
+
+CREATE TABLE IF NOT EXISTS LogAlertas (
+    id_log       INT PRIMARY KEY AUTO_INCREMENT,  -- número de alerta
+    material     VARCHAR(100),                    -- nombre del material
+    deficit      DECIMAL(10,2),                   -- cuánto falta
+    fecha_alerta DATETIME                         -- cuándo se detectó
+);
+
+SET GLOBAL event_scheduler = ON;
+
+DROP EVENT IF EXISTS EVT_VerificarStockMateriales;
+
+CREATE EVENT EVT_VerificarStockMateriales
+    ON SCHEDULE EVERY 6 HOUR
+    STARTS NOW()
+    DO
+        INSERT INTO LogAlertas (material, deficit, fecha_alerta)
+        SELECT nombre, (stock_minimo - stock_actual), NOW()
+        FROM Materiales
+        WHERE stock_actual < stock_minimo;
+        
+SHOW EVENTS;
+
+SELECT * FROM LogAlertas;
+
+2. EVT_GenerarReporteVentas: Genera reportes diarios de ventas por tienda.
+
+USE fashiondb;
+
+CREATE TABLE IF NOT EXISTS Ventas (
+    id_venta    INT PRIMARY KEY AUTO_INCREMENT,
+    tienda      VARCHAR(100),
+    fecha_venta DATE,
+    monto       DECIMAL(10,2)
+);
+
+DROP TABLE IF EXISTS Ventas;
+
+INSERT INTO Ventas (tienda, fecha_venta, monto) VALUES
+('Tienda Centro', CURDATE(), 150.00),
+('Tienda Centro', CURDATE(), 200.00),
+('Tienda Norte',  CURDATE(), 85.50),
+('Tienda Norte',  CURDATE(), 45.00),
+('Tienda Sur',    CURDATE(), 120.00);
+
+CREATE TABLE IF NOT EXISTS ReporteDiarioVentas (
+    id_reporte   INT PRIMARY KEY AUTO_INCREMENT,
+    tienda       VARCHAR(100),   -- nombre de la tienda
+    num_ventas   INT,            -- cuántas ventas hizo
+    total_dia    DECIMAL(10,2),  -- cuánto vendió en total
+    fecha        DATE            -- de qué día es el reporte
+);
+
+SET GLOBAL event_scheduler = ON;
+
+DROP EVENT IF EXISTS EVT_GenerarReporteVentas;
+
+CREATE EVENT EVT_GenerarReporteVentas
+    ON SCHEDULE EVERY 1 DAY
+    STARTS (CURDATE() + INTERVAL 23 HOUR + INTERVAL 59 MINUTE)
+    DO
+        INSERT INTO ReporteDiarioVentas (tienda, num_ventas, total_dia, fecha)
+        SELECT
+            tienda,
+            COUNT(*),       -- cuenta cuántas ventas hubo
+            SUM(monto),     -- suma el total vendido
+            CURDATE()       -- fecha de hoy
+        FROM Ventas
+        WHERE fecha_venta = CURDATE()  -- solo las ventas de hoy
+        GROUP BY tienda;               -- agrupadas por tienda
+        
+SHOW EVENTS;
+
+INSERT INTO ReporteDiarioVentas (tienda, num_ventas, total_dia, fecha)
+SELECT tienda, COUNT(*), SUM(monto), CURDATE()
+FROM Ventas
+WHERE fecha_venta = CURDATE()
+GROUP BY tienda;
+
+SELECT * FROM ReporteDiarioVentas;
+
+3. EVT_ProgramarProduccionTemporada: Programa la producción anticipada para nueva temporada.
+
+USE fashiondb;
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+DROP TABLE IF EXISTS OrdenesProduccion;
+DROP TABLE IF EXISTS Temporadas;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+CREATE TABLE Temporadas (
+    id_temporada INT PRIMARY KEY AUTO_INCREMENT,
+    nombre       VARCHAR(50),
+    fecha_inicio DATE,
+    fecha_fin    DATE
+);
+
+CREATE TABLE OrdenesProduccion (
+    id_orden     INT PRIMARY KEY AUTO_INCREMENT,
+    detalle      VARCHAR(100),
+    id_temporada INT,
+    cantidad     INT,
+    fecha_orden  DATE,
+    FOREIGN KEY (id_temporada) REFERENCES Temporadas(id_temporada)
+);
+
+INSERT INTO Temporadas (nombre, fecha_inicio, fecha_fin) VALUES
+('Verano 2026',   '2026-06-01', '2026-08-31'),
+('Otoño 2026',    '2026-09-01', '2026-11-30'),
+('Invierno 2027', '2027-01-01', '2027-03-31');
+
+DROP EVENT IF EXISTS EVT_ProgramarProduccionTemporada;
+
+CREATE EVENT EVT_ProgramarProduccionTemporada
+    ON SCHEDULE EVERY 1 MONTH
+    STARTS NOW()
+    DO
+        INSERT INTO OrdenesProduccion (detalle, id_temporada, cantidad, fecha_orden)
+        SELECT CONCAT('Producción - ', nombre), id_temporada, 500, CURDATE()
+        FROM Temporadas
+        WHERE fecha_inicio > CURDATE();
+        
+INSERT INTO OrdenesProduccion (detalle, id_temporada, cantidad, fecha_orden)
+SELECT CONCAT('Producción - ', nombre), id_temporada, 500, CURDATE()
+FROM Temporadas
+WHERE fecha_inicio > CURDATE();
+
+SELECT * FROM OrdenesProduccion;
+
+
+
+4. EVT_ActualizarInventarioTiendas: Actualiza la distribución de inventario entre tiendas.
+
+USE fashiondb;
+
+DROP TABLE IF EXISTS InventarioTiendas;
+
+CREATE TABLE InventarioTiendas (
+    id_registro   INT PRIMARY KEY AUTO_INCREMENT,
+    tienda        VARCHAR(100),
+    nombre_prenda VARCHAR(100),
+    stock_actual  INT,
+    stock_optimo  INT
+);
+
+INSERT INTO InventarioTiendas (tienda, nombre_prenda, stock_actual, stock_optimo) VALUES
+('Tienda Centro', 'Jeans Azules',  5,  20),
+('Tienda Norte',  'Jeans Azules',  35, 20),
+('Tienda Sur',    'Blusa de Seda', 2,  15),
+('Tienda Centro', 'Blusa de Seda', 30, 15);
+
+SET GLOBAL event_scheduler = ON;
+DROP EVENT IF EXISTS EVT_ActualizarInventarioTiendas;
+
+CREATE EVENT EVT_ActualizarInventarioTiendas
+    ON SCHEDULE EVERY 1 WEEK
+    STARTS NOW()
+    DO
+        UPDATE InventarioTiendas
+        SET stock_actual = stock_optimo
+        WHERE stock_actual < stock_optimo;
+        
+UPDATE InventarioTiendas
+SET stock_actual = stock_optimo
+WHERE stock_actual < stock_optimo;
+
+SELECT * FROM InventarioTiendas;
+
+
+5. EVT_VerificarDescuentosFinTemporada: Aplica descuentos automáticos para final de temporada.
+
+USE fashiondb;
+
+DROP TABLE IF EXISTS PrendasTemporada;
+
+CREATE TABLE PrendasTemporada (
+    id_prenda       INT PRIMARY KEY AUTO_INCREMENT,
+    nombre_prenda   VARCHAR(100),
+    precio_original DECIMAL(10,2),
+    precio_actual   DECIMAL(10,2),
+    stock_restante  INT,
+    dias_fin_temp   INT,
+    descuento_pct   DECIMAL(5,2) DEFAULT 0
+);
+
+INSERT INTO PrendasTemporada (nombre_prenda, precio_original, precio_actual, stock_restante, dias_fin_temp) VALUES
+('Abrigo Invernal', 200.00, 200.00, 40, 25),
+('Bufanda de Lana',  50.00,  50.00, 80, 10),
+('Guantes Cuero',    75.00,  75.00,  5, 20),
+('Gorro Tejido',     30.00,  30.00,  3,  5);
+
+SET GLOBAL event_scheduler = ON;
+
+DROP EVENT IF EXISTS EVT_VerificarDescuentosFinTemporada;
+
+CREATE EVENT EVT_VerificarDescuentosFinTemporada
+    ON SCHEDULE EVERY 1 DAY
+    STARTS NOW()
+    DO
+        UPDATE PrendasTemporada
+        SET descuento_pct = CASE
+            WHEN dias_fin_temp <= 7  AND stock_restante > 10 THEN 50  -- quedan 7 días  = 50% off
+            WHEN dias_fin_temp <= 15 AND stock_restante > 20 THEN 30  -- quedan 15 días = 30% off
+            WHEN dias_fin_temp <= 30 AND stock_restante > 30 THEN 20  -- quedan 30 días = 20% off
+            ELSE 0                                                      -- sin descuento
+        END,
+        precio_actual = precio_original * (1 - descuento_pct / 100);  -- calcula el precio final
+        
+UPDATE PrendasTemporada
+SET descuento_pct = CASE
+    WHEN dias_fin_temp <= 7  AND stock_restante > 10 THEN 50
+    WHEN dias_fin_temp <= 15 AND stock_restante > 20 THEN 30
+    WHEN dias_fin_temp <= 30 AND stock_restante > 30 THEN 20
+    ELSE 0
+END,
+precio_actual = precio_original * (1 - descuento_pct / 100);
+
+SELECT * FROM PrendasTemporada;
