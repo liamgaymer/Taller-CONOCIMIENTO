@@ -1,0 +1,258 @@
+CREATE DATABASE IF NOT EXISTS fashiondb;
+USE fashiondb;
+
+-- Crear tablas
+CREATE TABLE IF NOT EXISTS Colecciones (
+    codigo_coleccion VARCHAR(10) PRIMARY KEY,
+    nombre VARCHAR(100)
+);
+
+CREATE TABLE IF NOT EXISTS Prendas (
+    codigo_prenda VARCHAR(10) PRIMARY KEY,
+    nombre VARCHAR(100)
+);
+
+CREATE TABLE IF NOT EXISTS Coleccion_Prendas (
+    codigo_coleccion VARCHAR(10),
+    codigo_prenda VARCHAR(10),
+    PRIMARY KEY (codigo_coleccion, codigo_prenda),
+    FOREIGN KEY (codigo_coleccion) REFERENCES Colecciones(codigo_coleccion),
+    FOREIGN KEY (codigo_prenda) REFERENCES Prendas(codigo_prenda)
+);
+
+-- Insertar datos
+INSERT INTO Colecciones VALUES ('C001', 'Luces de Otoño');
+INSERT INTO Prendas VALUES ('P001', 'Vestido Noche Estrella');
+INSERT INTO Prendas VALUES ('P004', 'Chaqueta Viento Libre');
+INSERT INTO Coleccion_Prendas VALUES ('C001', 'P001');
+INSERT INTO Coleccion_Prendas VALUES ('C001', 'P004');
+
+-- Consulta
+SELECT p.nombre
+FROM Prendas p
+JOIN Coleccion_Prendas cp ON p.codigo_prenda = cp.codigo_prenda
+JOIN Colecciones c ON cp.codigo_coleccion = c.codigo_coleccion
+WHERE c.nombre = 'Luces de Otoño';
+
+SHOW DATABASES; 
+
+
+
+DROP TABLE IF EXISTS Coleccion_Prendas;
+DROP TABLE IF EXISTS Prendas;
+
+CREATE TABLE Prendas (
+    id INT PRIMARY KEY,
+    nombre VARCHAR(100),
+    categoria VARCHAR(50),
+    precio_venta DECIMAL(10, 2)
+);
+
+-- Insertar datos
+INSERT INTO Prendas (id, nombre, categoria, precio_venta) VALUES
+(1, 'Camiseta Básica', 'Casual', 15.00),
+(2, 'Chaqueta de Cuero', 'Formal', 250.00),
+(3, 'Pantalón Jean', 'Casual', 45.50),
+(4, 'Vestido de Gala', 'Fiesta', 120.00),
+(5, 'Medias Deportivas', 'Deportiva', 8.00),
+(6, 'Abrigo de Invierno', 'Formal', 105.00);
+
+-- Consulta
+SELECT nombre, precio_venta
+FROM Prendas
+WHERE precio_venta = 105.00;
+
+
+-- Limpieza total 
+DROP TABLE IF EXISTS Prendas;
+DROP TABLE IF EXISTS Disenadores;
+
+-- la tabla 'padre' 
+CREATE TABLE Disenadores (
+    id_disenador INT PRIMARY KEY,
+    nombre_disenador VARCHAR(100)
+);
+-- la tabla 'hijos'
+CREATE TABLE Prendas (
+    id_prenda INT PRIMARY KEY,
+    nombre VARCHAR(100),
+    categoria VARCHAR(50),
+    id_disenador INT,
+    CONSTRAINT fk_disenador 
+    FOREIGN KEY (id_disenador) REFERENCES Disenadores(id_disenador)
+);
+-- Insertamos datos
+INSERT INTO Disenadores (id_disenador, nombre_disenador) 
+VALUES (1, 'Coco Chanel'), (2, 'Gianni Versace');
+
+INSERT INTO Prendas (id_prenda, nombre, categoria, id_disenador) 
+VALUES 
+(101, 'Vestido de Seda', 'Vestido', 1),
+(102, 'Pantalón Negro', 'Pantalón', 1),
+(103, 'Vestido Dorado', 'Vestido', 2),
+(104, 'Vestido Floral', 'Vestido', 1);
+
+-- Final 
+SELECT * FROM Prendas 
+WHERE categoria = 'Vestido' 
+  AND id_disenador = 1;
+  
+
+-- Seleccionamos la base de datos 
+USE fashiondb;
+
+-- Limpieza y creación de la tabla
+DROP TABLE IF EXISTS Prendas;
+
+CREATE TABLE Prendas (
+    id_prenda INT PRIMARY KEY,
+    nombre_prenda VARCHAR(100),
+    linea VARCHAR(50)
+);
+
+-- Insertar los datos 
+INSERT INTO Prendas (id_prenda, nombre_prenda, linea) 
+VALUES 
+(1, 'Jeans Azules', 'Casual'),
+(2, 'Vestido de Gala', 'Formal'),
+(3, 'Sudadera Runner', 'Deportiva'),
+(4, 'Tuxedo Negro', 'Etiqueta'),
+(5, 'Camiseta Básica', 'Casual');
+
+-- La consulta final
+SELECT * FROM Prendas 
+WHERE linea NOT IN ('Casual', 'Deportiva');
+
+
+-- Borramos y creamos la tabla de órdenes
+DROP TABLE IF EXISTS OrdenesProduccion;
+
+CREATE TABLE OrdenesProduccion (
+    id_orden INT PRIMARY KEY,
+    detalle_prenda VARCHAR(100),
+    fecha_orden DATE -- El tipo DATE es para fechas (AAAA-MM-DD)
+);
+
+-- algunas de 2024 y otras no
+INSERT INTO OrdenesProduccion (id_orden, detalle_prenda, fecha_orden) 
+VALUES 
+(1, 'Camisetas Polo', '2024-01-15'), -- ENERO (Sí entra)
+(2, 'Jeans Azules', '2024-02-20'),   -- FEBRERO (Sí entra)
+(3, 'Faldas Cortas', '2024-03-30'),  -- MARZO (Sí entra)
+(4, 'Sacos Lana', '2024-05-10'),     -- MAYO (No entra, es 2do trimestre)
+(5, 'Vestidos', '2023-12-25');       -- DICIEMBRE 2023 (No entra)
+
+-- final
+SELECT * FROM OrdenesProduccion 
+WHERE fecha_orden BETWEEN '2024-01-01' AND '2024-03-31';
+
+
+CREATE TABLE Inventario (
+    id_prenda INT PRIMARY KEY,
+    nombre_prenda VARCHAR(100),
+    talla VARCHAR(5)
+);
+
+-- tallas mezcladas
+INSERT INTO Inventario (id_prenda, nombre_prenda, talla) 
+VALUES 
+(1, 'Camisa Formal', 'S'),  -- Sí entra
+(2, 'Jean Clásico', 'XL'),  -- No entra
+(3, 'Blusa Seda', 'M'),     -- Sí entra
+(4, 'Chaqueta Cuero', 'L'), -- Sí entra
+(5, 'Medias Pack', 'XS');   -- No entra
+
+-- final
+SELECT * FROM Inventario 
+WHERE talla IN ('XS', 'XL', 'M');
+
+
+DROP TABLE IF EXISTS Materiales;
+
+CREATE TABLE Materiales (
+    id_material INT PRIMARY KEY,
+    nombre_material VARCHAR(100),
+    composicion VARCHAR(255) -- Aquí guardamos el texto largo
+);
+
+-- diferentes composiciones
+INSERT INTO Materiales (id_material, nombre_material, composicion) 
+VALUES 
+(1, 'Tela Denim', '98% algodón, 2% elastano'), -- Sí entra (tiene algodón)
+(2, 'Satín Lujoso', '100% seda natural'),      -- Sí entra (tiene seda)
+(3, 'Poliéster Eco', '100% poliéster reciclado'), -- No entra
+(4, 'Mezcla Suave', 'Cincuenta por ciento seda y lana'), -- Sí entra (tiene seda)
+(5, 'Lino Puro', '100% lino de alta calidad');  -- No entra
+
+-- final
+SELECT * FROM Materiales 
+WHERE composicion LIKE '%algodón%' 
+   OR composicion LIKE '%seda%';
+   
+
+-- Borramos y creamos 
+DROP TABLE IF EXISTS Patrones;
+
+CREATE TABLE Patrones (
+    id_patron INT PRIMARY KEY,
+    nombre_patron VARCHAR(100),
+    archivo_digital VARCHAR(255) -- Aquí va la ruta del archivo
+);
+
+-- algunos con archivo y otros vacíos
+INSERT INTO Patrones (id_patron, nombre_patron, archivo_digital) 
+VALUES 
+(1, 'Molde Camisa XL', 'C:/disenos/camisa_xl.pdf'), -- Tiene archivo
+(2, 'Molde Pantalón L', NULL),                     -- NO tiene (es NULL)
+(3, 'Molde Falda S', 'C:/disenos/falda_s.jpg'),      -- Tiene archivo
+(4, 'Molde Abrigo M', NULL);                       -- NO tiene (es NULL)
+
+-- BUSCAR LOS VACÍOS
+SELECT * FROM Patrones 
+WHERE archivo_digital IS NULL;
+
+
+--  Borramos y creamos 
+DROP TABLE IF EXISTS Ventas;
+
+CREATE TABLE Ventas (
+    id_venta INT PRIMARY KEY,
+    tienda VARCHAR(100),
+    fecha_venta DATE,
+    monto DECIMAL(10, 2)
+);
+
+-- ejemplos 
+INSERT INTO Ventas (id_venta, tienda, fecha_venta, monto) 
+VALUES 
+(1, 'Tienda Centro', '2024-03-15', 150.00),
+(2, 'Tienda Norte', '2024-01-10', 85.50),
+(3, 'Tienda Centro', '2024-02-20', 200.00),
+(4, 'Tienda Sur', '2024-03-05', 120.00),
+(5, 'Tienda Norte', '2024-01-05', 45.00);
+
+-- LA CONSULTA PARA ORDENAR
+SELECT * FROM Ventas 
+ORDER BY tienda ASC, fecha_venta DESC;
+
+
+-- Creamos una tabla que ya tenga el Tipo y la Temporada
+DROP TABLE IF EXISTS ResumenVentas;
+
+CREATE TABLE ResumenVentas (
+    prenda_tipo VARCHAR(50),
+    temporada VARCHAR(50),
+    monto_venta DECIMAL(10, 2)
+);
+
+-- Metemos datos de ejemplo 
+INSERT INTO ResumenVentas VALUES 
+('Camisa', 'Verano', 50.00),
+('Camisa', 'Verano', 30.00), -- Otra camisa de verano
+('Pantalón', 'Verano', 100.00),
+('Camisa', 'Invierno', 80.00);
+
+-- LA CONSULTA QUE HACE EL TRABAJO
+SELECT prenda_tipo, temporada, SUM(monto_venta)
+FROM ResumenVentas
+GROUP BY prenda_tipo, temporada;
