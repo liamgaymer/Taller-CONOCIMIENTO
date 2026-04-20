@@ -1,0 +1,73 @@
+README.md: Proyecto FashionDB
+Documentación Oficial del Sistema de Gestión de Moda
+
+1. Descripción General del Proyecto
+FashionDB es una solución integral de base de datos diseñada para administrar los flujos
+de información de una industria de confección y moda. El proyecto centraliza datos críticos
+desde la fase de diseño hasta la comercialización final.
+Permite el seguimiento de colecciones temporales, la gestión de diseñadores de alta
+costura, el control de inventarios segmentado por tallas y la generación de reportes de
+ventas por sede.
+2. Estructura de los Módulos
+
+Módulo de Diseño (Core)
+Gestiona las tablas de Colecciones , Prendas y Diseñadores , estableciendo
+relaciones de autoría y pertenencia a líneas de temporada.
+
+Módulo de Producción y Materia Prima
+Administra las tablas Materiales (composiciones textiles) y Patrones (archivos
+digitales para corte).
+
+Módulo de Logística y Ventas
+Controla el Inventario dinámico y el histórico de Ventas , permitiendo ordenar
+transacciones por monto y ubicación.
+
+3. Instrucciones de Uso
+
+Requisitos: Motor MySQL 8.0+ o MariaDB.
+Despliegue: Copie el script de la sección 4 y ejecútelo en su cliente SQL preferido
+(Workbench, DBeaver o Terminal).
+Verificación: Use SELECT * FROM fashiondb.Ventas; para confirmar la carga de
+datos iniciales.
+
+4. Script de la Base de Datos
+
+Documento generado para William Osorno - 2026
+
+•
+•
+
+•
+
+-- CREACIÓN DE LA BASE DE DATOS
+CREATE DATABASE IF NOT EXISTS fashiondb;
+USE fashiondb;
+-- TABLA DISEÑADORES
+CREATE TABLE Disenadores (
+id_disenador INT PRIMARY KEY,
+nombre_disenador VARCHAR(100)
+);
+-- TABLA PRENDAS (MÓDULO CENTRAL)
+CREATE TABLE Prendas (
+id_prenda INT PRIMARY KEY,
+nombre VARCHAR(100),
+categoria VARCHAR(50),
+id_disenador INT,
+CONSTRAINT fk_disenador FOREIGN KEY (id_disenador)
+REFERENCES Disenadores(id_disenador)
+);
+-- TABLA MATERIALES
+CREATE TABLE Materiales (
+id_material INT PRIMARY KEY,
+nombre_material VARCHAR(100),
+composicion VARCHAR(255)
+);
+-- TABLA VENTAS
+CREATE TABLE Ventas (
+id_venta INT PRIMARY KEY,
+tienda VARCHAR(100),
+fecha_venta DATE,
+monto DECIMAL(10, 2)
+);
+-- CONSULTA DE EJEMPLO: Ventas por monto descendente
+SELECT * FROM Ventas ORDER BY monto DESC;
